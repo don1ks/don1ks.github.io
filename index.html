@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <script>
+    // Тема до отрисовки, чтобы не мигало: сохранённая или системная
+    try { const t = localStorage.getItem('vuzmap.theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Учёба на карте — вузы и колледжи Москвы и области</title>
+  <meta name="description" content="Интерактивная карта всех вузов и колледжей Москвы и Московской области: бюджет, общежитие, проходные баллы, стоимость, ближайшее метро и калькулятор ЕГЭ.">
+  <link rel="canonical" href="https://don1ks.github.io/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Учёба на карте — вузы и колледжи Москвы и области">
+  <meta property="og:description" content="Интерактивная карта всех вузов и колледжей Москвы и Московской области: бюджет, общежитие, проходные баллы, стоимость, ближайшее метро и калькулятор ЕГЭ.">
+  <meta property="og:url" content="https://don1ks.github.io/">
+  <meta property="og:locale" content="ru_RU">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%2212%22%20fill%3D%22%231a73e8%22%2F%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M12%205%203%209.5l9%204.5%207-3.5V15h1.5V9.5L12%205zm-5%206.8v2.9l5%202.8%205-2.8v-2.9l-5%202.7-5-2.7z%22%2F%3E%3C%2Fsvg%3E">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Unbounded:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- Выпадающий список направлений -->
+  <div class="popover" id="dirs-pop" hidden>
+    <div class="popover-head">Направления <span class="hint">любое из выбранных</span></div>
+    <div class="popover-list" id="dirs"></div>
+  </div>
+
+  <!-- Легенда -->
+  <div class="legend-card" id="legend">
+    <label class="legend-mode">Цвет точек:
+      <select id="color-by" aria-label="Цвет точек">
+        <option value="type">тип</option>
+        <option value="dorm">общежитие</option>
+        <option value="budget">бюджет</option>
+      </select>
+    </label>
+    <div class="legend-row" id="legend-items"></div>
+    <div class="legend-row">
+      <span><i class="zone msk"></i>Москва</span>
+      <span><i class="zone mo"></i>Московская область</span>
+    </div>
+  </div>
+
+  <!-- Кнопки управления картой -->
+  <div class="map-controls">
+    <button id="theme" class="ctrl-btn single" aria-label="Тёмная тема" title="Тёмная / светлая тема">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.5 0-.9-.1-1.4A5.5 5.5 0 0 1 13.4 3.1 9 9 0 0 0 12 3z"/></svg>
+    </button>
+    <button id="locate" class="ctrl-btn single" aria-label="Моё местоположение" title="Где я">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 3h-2.07A7 7 0 0 0 13 5.07V3h-2v2.07A7 7 0 0 0 5.07 11H3v2h2.07A7 7 0 0 0 11 18.93V21h2v-2.07A7 7 0 0 0 18.93 13H21v-2zm-9 6a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>
+    </button>
+    <button id="fit-all" class="ctrl-btn single" aria-label="Показать все" title="Показать всё">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M4 4h6v2H6v4H4V4zm10 0h6v6h-2V6h-4V4zM4 14h2v4h4v2H4v-6zm14 0h2v6h-6v-2h4v-4z"/></svg>
+    </button>
+    <div class="ctrl-stack">
+      <button id="zoom-in" class="ctrl-btn" aria-label="Приблизить">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>
+      </button>
+      <button id="zoom-out" class="ctrl-btn" aria-label="Отдалить">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M5 11h14v2H5z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Боковая панель: поиск, список / карточка -->
+  <aside id="panel" class="panel">
+    <button class="panel-grip" id="panel-grip" aria-label="Развернуть или свернуть панель"></button>
+
+    <div class="panel-top">
+      <label class="search">
+        <span class="brand-mark" title="Учёба на карте">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 3 1 9l11 6 9-4.9V17h2V9L12 3zm-6 9.2v4L12 20l6-3.8v-4L12 15.5l-6-3.3z"/></svg>
+        </span>
+        <input id="search" type="search" placeholder="Поиск вузов и колледжей" autocomplete="off">
+        <button id="search-clear" class="icon-btn" aria-label="Очистить" hidden>
+          <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg>
+        </button>
+        <span class="search-icon">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg>
+        </span>
+      </label>
+    </div>
+
+    <button class="calc-cta" id="calc-open">
+      <span class="calc-cta-ic">🎯</span>
+      <span><b>Куда я прохожу?</b><small>Калькулятор баллов ЕГЭ</small></span>
+      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M8.6 16.6 10 18l6-6-6-6-1.4 1.4 4.6 4.6z"/></svg>
+    </button>
+
+    <!-- Фильтры (под поиском) -->
+    <div class="chipbar" id="chipbar">
+      <div class="f-head">
+        <span>Фильтры</span>
+        <button class="link-btn" id="reset">Сбросить</button>
+      </div>
+      <div class="f-row">
+        <div class="f-label">Тип</div>
+        <div class="chip-group" data-filter="type">
+          <button class="chip active" data-value="vuz"><i class="dot vuz"></i>Вузы <span class="cnt" data-cnt="vuz"></span></button>
+          <button class="chip active" data-value="college"><i class="dot college"></i>Колледжи <span class="cnt" data-cnt="college"></span></button>
+          <button class="chip active" data-value="unicollege"><i class="dot unicollege"></i>При вузах <span class="cnt" data-cnt="unicollege"></span></button>
+        </div>
+      </div>
+      <div class="f-row f-row-2">
+        <div>
+          <div class="f-label">Где</div>
+          <div class="chip-group" data-filter="region">
+            <button class="chip active" data-value="msk">Москва</button>
+            <button class="chip active" data-value="mo">Область</button>
+          </div>
+        </div>
+        <div>
+          <div class="f-label">Собственность</div>
+          <div class="chip-group" data-filter="own">
+            <button class="chip active" data-value="gos" title="Государственные">Гос.</button>
+            <button class="chip active" data-value="private">Частные</button>
+          </div>
+        </div>
+      </div>
+      <div class="f-row">
+        <div class="f-label">Условия и направления</div>
+        <div class="chip-line">
+          <label class="chip chip-check"><input type="checkbox" id="f-budget">
+            <svg class="check" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="m9 16.2-3.5-3.5L4 14.2l5 5 11-11-1.4-1.4z"/></svg>Бюджет</label>
+          <label class="chip chip-check"><input type="checkbox" id="f-dorm">
+            <svg class="check" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="m9 16.2-3.5-3.5L4 14.2l5 5 11-11-1.4-1.4z"/></svg>Общежитие</label>
+          <button class="chip chip-drop" id="dirs-btn" aria-haspopup="true" aria-expanded="false">
+            Направления <span class="cnt" id="dirs-count"></span>
+            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
+          </button>
+          <label class="chip chip-check"><input type="checkbox" id="f-fav">
+            <svg class="check" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="m9 16.2-3.5-3.5L4 14.2l5 5 11-11-1.4-1.4z"/></svg>★ Избранное <span class="cnt" id="fav-count"></span></label>
+        </div>
+      </div>
+      <details class="more" id="more">
+        <summary>Ещё фильтры <span class="cnt" id="more-count"></span></summary>
+        <div class="f-row">
+          <div class="f-label">Уровень обучения</div>
+          <div class="chip-line" id="levels"></div>
+        </div>
+        <div class="f-row">
+          <div class="f-label">От дома</div>
+          <form class="home-line" id="home-form">
+            <input id="home-input" type="search" placeholder="Ваш адрес, например «Тверская 1»" autocomplete="off">
+            <button class="chip" id="home-go" type="submit">Найти</button>
+          </form>
+          <div class="home-state" id="home-state" hidden>
+            <span id="home-label"></span>
+            <select id="radius" aria-label="Расстояние">
+              <option value="0">любое расстояние</option>
+              <option value="3">до 3 км</option>
+              <option value="5">до 5 км</option>
+              <option value="10">до 10 км</option>
+              <option value="20">до 20 км</option>
+              <option value="40">до 40 км</option>
+            </select>
+            <button class="link-btn" id="home-clear" type="button">Убрать</button>
+          </div>
+          <div class="hint-line">Расстояние по прямой. Время в пути — кнопка «Маршрут» в карточке.</div>
+        </div>
+      </details>
+    </div>
+
+    <!-- Вид 1: список -->
+    <section id="view-list" class="view">
+      <div class="list-head">
+        <div>
+          <div class="brand-name">Учёба на карте</div>
+          <div class="list-sub" id="results-count">—</div>
+        </div>
+        <div class="list-tools">
+          <button class="chip compare-btn" id="compare-btn" hidden>Сравнить <span class="cnt" id="compare-count"></span></button>
+          <select id="sort" aria-label="Сортировка">
+            <option value="name">По названию</option>
+            <option value="founded">Сначала старейшие</option>
+            <option value="price">Сначала дешевле</option>
+            <option value="ege">По баллу ЕГЭ</option>
+            <option value="home" id="sort-home" hidden>Ближе к дому</option>
+          </select>
+        </div>
+      </div>
+      <ul id="results" class="results"></ul>
+      <p class="disclaimer">Данные собраны вручную и могут быть неточными. Перед поступлением проверяйте информацию на сайте учебного заведения.</p>
+    </section>
+
+    <!-- Вид 3: калькулятор ЕГЭ -->
+    <section id="view-calc" class="view" hidden>
+      <div class="calc-head">
+        <button id="calc-back" class="back-btn static" aria-label="Назад" title="Назад">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20z"/></svg>
+        </button>
+        <div>
+          <div class="brand-name">Калькулятор ЕГЭ</div>
+          <div class="list-sub">Введи баллы — покажу, куда проходишь</div>
+        </div>
+      </div>
+      <div class="calc-form" id="calc-form"></div>
+      <div class="calc-opts">
+        <label class="chip chip-check"><input type="checkbox" id="calc-map" checked>
+          <svg class="check" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="m9 16.2-3.5-3.5L4 14.2l5 5 11-11-1.4-1.4z"/></svg>Показать на карте</label>
+        <select id="calc-level" aria-label="Уровень">
+          <option value="">бакалавриат и специалитет</option>
+          <option value="bak">только бакалавриат</option>
+          <option value="spec">только специалитет</option>
+        </select>
+      </div>
+      <div id="calc-results" class="calc-results"></div>
+      <p class="disclaimer">Проходной балл — средний балл на один предмет у поступивших на бюджет в прошлом году (по данным ucheba.ru). Индивидуальные достижения, творческие экзамены и минимальные пороги не учтены. Это ориентир, а не гарантия — проверяйте на сайте вуза.</p>
+    </section>
+
+    <!-- Вид 2: карточка заведения -->
+    <section id="view-card" class="view" hidden>
+      <button id="back" class="back-btn" aria-label="Назад к списку" title="Назад к списку">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20z"/></svg>
+      </button>
+      <div id="card"></div>
+    </section>
+  </aside>
+
+  <!-- Сравнение избранного -->
+  <dialog class="compare" id="compare">
+    <div class="compare-head">
+      <b>Сравнение избранного</b>
+      <button class="icon-btn" id="compare-close" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg>
+      </button>
+    </div>
+    <div class="compare-wrap" id="compare-table"></div>
+  </dialog>
+
+  <!-- Язычок сворачивания панели (ПК) -->
+  <button id="panel-collapse" class="panel-tab" aria-label="Свернуть панель" title="Свернуть панель">
+    <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M8.6 16.6 10 18l6-6-6-6-1.4 1.4 4.6 4.6z"/></svg>
+  </button>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="data.js"></script>
+  <script src="regions.js"></script>
+  <script src="programs.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
