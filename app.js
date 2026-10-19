@@ -339,13 +339,72 @@
     return used.reduce((a, b) => a + b, 0) / used.length;
   }
 
+  // Режим: после 11 класса (ЕГЭ → вуз) или после 9 класса (аттестат → колледж)
+  const CPROGS = window.COLLEGE_PROGRAMS || {};
+  let calcMode = store.get('calcMode', 'ege');
+  let attest = store.get('attest', 0);
   function renderCalcForm() {
-    $('#calc-form').innerHTML = Object.entries(SUBJECTS).map(([k, v]) => `
+    const tabs = `<div class="calc-tabs">
+        <button class="calc-tab${calcMode === 'ege' ? ' active' : ''}" data-mode="ege">После 11 класса<small>ЕГЭ → вуз</small></button>
+        <button class="calc-tab${calcMode === 'spo' ? ' active' : ''}" data-mode="spo">После 9 класса<small>аттестат → колледж</small></button>
+      </div>`;
+    $('#calc-form').innerHTML = tabs + (calcMode === 'spo'
+      ? `<label class="calc-row wide${attest ? ' filled' : ''}"><span>Средний балл аттестата</span>
+          <input type="number" inputmode="decimal" min="3" max="5" step="0.01" placeholder="4,2" id="attest" value="${attest || ''}"></label>`
+      : Object.entries(SUBJECTS).map(([k, v]) => `
       <label class="calc-row${scores[k] ? ' filled' : ''}"><span>${v}</span>
-        <input type="number" inputmode="numeric" min="0" max="100" placeholder="—" data-subj="${k}" value="${scores[k] || ''}"></label>`).join('');
+        <input type="number" inputmode="numeric" min="0" max="100" placeholder="—" data-subj="${k}" value="${scores[k] || ''}"></label>`).join(''));
+    $('#calc-level').hidden = calcMode === 'spo';
+  }
+  $('#calc-form').addEventListener('click', e => {
+    const t = e.target.closest('[data-mode]');
+    if (!t) return;
+    e.preventDefault();
+    calcMode = t.dataset.mode;
+    store.set('calcMode', calcMode);
+    renderCalcForm();
+    runCalc();
+  });
+
+  // Колледжи: средний балл аттестата против проходного; без проходного — «бюджет есть, проходной неизвестен»
+  function runCollegeCalc() {
+    const box = $('#calc-results');
+    if (!(attest >= 3 && attest <= 5)) {
+      box.innerHTML = '<div class="calc-empty">Введи средний балл аттестата, например 4,2 — покажу колледжи, куда проходишь на бюджет.</div>';
+      setCalcIds(null);
+      return;
+    }
+    const pass = [], near = [], unknown = [];
+    for (const inst of DATA) {
+      if (inst.type === 'vuz' || !inst.ucheba || !CPROGS[inst.ucheba]) continue;
+      for (const p of CPROGS[inst.ucheba]) {
+        if (!p.b) continue;
+        const row = { inst, p };
+        if (p.d && attest >= p.d) pass.push(row);
+        else if (p.d && attest >= p.d - 0.2) near.push(row);
+        else if (!p.d) unknown.push(row);
+      }
+    }
+    pass.sort((x, y) => y.p.d - x.p.d);
+    near.sort((x, y) => (x.p.d - attest) - (y.p.d - attest));
+    const f = n => n.toFixed(2).replace('.', ',');
+    const uniq = rows => new Set(rows.map(r => r.inst.id)).size;
+    const item = ({ inst, p }, kind) => `
+      <li class="calc-item ${kind}" data-id="${inst.id}">
+        <div class="ci-vuz">${esc(inst.short)}${p.ex ? ' <span class="ci-ex">+ вступительное испытание</span>' : ''}</div>
+        <div class="ci-prog">${esc(p.n)}</div>
+        <div class="ci-nums">${p.d ? `проходной ≈ <b>${f(p.d)}</b> · у тебя <b>${f(attest)}</b>` : 'проходной балл неизвестен'} · бюджет ${p.b} мест</div>
+      </li>`;
+    const section = (title, rows, kind, open) => rows.length ? `
+      <details class="calc-sec ${kind}"${open ? ' open' : ''}><summary>${title} <span class="cnt">${rows.length} ${plural(rows.length, 'специальность', 'специальности', 'специальностей')} в ${uniq(rows)} ${plural(uniq(rows), 'колледже', 'колледжах', 'колледжах')}</span></summary>
+        <ul>${rows.slice(0, 200).map(r => item(r, kind)).join('')}</ul></details>` : '';
+    box.innerHTML = section('✅ Проходишь на бюджет', pass, 'pass', true) + section('🟡 Почти проходишь (не хватает до 0,2 балла)', near, 'near', !pass.length)
+      + section('❔ Есть бюджет, проходной балл неизвестен', unknown, 'paid', !pass.length && !near.length);
+    setCalcIds($('#calc-map').checked ? new Set([...pass, ...near, ...unknown].map(r => r.inst.id)) : null);
   }
 
   function runCalc() {
+    if (calcMode === 'spo') return runCollegeCalc();
     const lvl = $('#calc-level').value;
     const have = Object.values(scores).filter(v => v > 0).length;
     const box = $('#calc-results');
@@ -406,6 +465,14 @@
   $('#calc-back').addEventListener('click', closeCalc);
   let calcTimer;
   $('#calc-form').addEventListener('input', e => {
+    if (e.target.id === 'attest') {
+      attest = Math.round((+String(e.target.value).replace(',', '.') || 0) * 100) / 100;
+      e.target.closest('.calc-row').classList.toggle('filled', attest >= 3 && attest <= 5);
+      store.set('attest', attest);
+      clearTimeout(calcTimer);
+      calcTimer = setTimeout(runCalc, 250);
+      return;
+    }
     const k = e.target.dataset.subj;
     if (!k) return;
     const v = Math.max(0, Math.min(100, Math.round(+e.target.value || 0)));
@@ -914,6 +981,7 @@
   $('#search').addEventListener('focus', () => { if (isMobile()) setSheet('open'); });
   map.on('click', () => { closeDirs(); if (isMobile()) setSheet(''); });
 
+  const wantCalc = new URLSearchParams(location.hash.slice(1)).get('calc') === '1'; // читаем до того, как render перепишет адрес
   const fromLink = loadHash();
   showHome();
   updateDirsBtn();
@@ -921,4 +989,5 @@
   if (state.colorBy !== 'type') markers.forEach(m => m.setIcon(pinIcon(m.inst)));
   render();
   if (fromLink) select(fromLink.id);
+  else if (wantCalc) openCalc(); // ссылка «Открыть калькулятор»
 })();

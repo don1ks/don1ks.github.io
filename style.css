@@ -144,6 +144,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 }
 .empty { padding: 48px 24px; text-align: center; color: var(--muted); font-size: 14px; }
 .disclaimer { margin: 16px 20px 24px; font-size: 12px; color: var(--faint); line-height: 1.5; }
+.disclaimer a { color: var(--accent); }
 
 /* ───── Блок фильтров в панели (под поиском) ───── */
 .chipbar { flex: none; padding: 4px 20px 14px; border-bottom: 1px solid var(--line); }
@@ -518,3 +519,9 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
   .calc-form { grid-template-columns: 1fr; }
   .calc-cta { margin: 0 12px 8px; }
 }
+.calc-tabs { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 4px; }
+.calc-tab { padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); font-weight: 700; font-size: 13.5px; text-align: left; }
+.calc-tab small { display: block; font-weight: 500; font-size: 12px; color: var(--muted); }
+.calc-tab.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-2); }
+.calc-row.wide { grid-column: 1 / -1; }
+.calc-row.wide input { width: 72px; }
