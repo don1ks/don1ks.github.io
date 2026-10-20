@@ -525,3 +525,4 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .calc-tab.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-2); }
 .calc-row.wide { grid-column: 1 / -1; }
 .calc-row.wide input { width: 72px; }
+

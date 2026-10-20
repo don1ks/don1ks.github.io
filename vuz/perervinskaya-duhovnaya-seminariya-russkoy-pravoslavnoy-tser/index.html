@@ -17,6 +17,19 @@
   <link rel="stylesheet" href="/seo.css">
   <link rel="icon" href="/favicon.svg">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"CollegeOrUniversity","name":"Перервинская Духовная семинария Русской Православной Церкви","alternateName":"Перервинская Духовная семинария Русской Православной Церкви","address":{"@type":"PostalAddress","addressLocality":"Москва","streetAddress":"улица Шоссейная 82","addressCountry":"RU"},"geo":{"@type":"GeoCoordinates","latitude":55.66926,"longitude":37.71917},"foundingDate":"1775"}</script>
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=113700175', 'ym');
+
+    ym(113700175, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/113700175" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
 </head>
 <body>
   <header class="top"><div class="wrap">
@@ -49,5 +62,28 @@
     <p>Данные: реестр аккредитации Рособрнадзора, ucheba.ru, OpenStreetMap, Викиданные. Информация может быть неточной — перед поступлением проверяйте на сайте учебного заведения.</p>
     <p><a href="/">Интерактивная карта</a> · <a href="/kalkulyator-ege/">Калькулятор ЕГЭ</a> · <a href="/katalog/">Все вузы и колледжи</a></p>
   </div></footer>
+<!-- Уведомление о cookies и Яндекс Метрике (показывается один раз) -->
+<div class="cookie-note" id="cookie-note" hidden>
+  <span>Сайт использует cookies и Яндекс Метрику, чтобы считать посещения. Продолжая пользоваться сайтом, вы соглашаетесь с этим.</span>
+  <button type="button" id="cookie-ok">Понятно</button>
+</div>
+<style>
+  .cookie-note { position: fixed; z-index: 3000; left: 50%; top: 12px; transform: translateX(-50%); width: min(560px, calc(100vw - 24px));
+    display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border-radius: 12px;
+    background: #202124; color: #fff; font: 500 13px/1.4 Manrope, system-ui, sans-serif; box-shadow: 0 4px 16px rgba(0, 0, 0, .3); }
+  .cookie-note[hidden] { display: none !important; }
+  .cookie-note button { flex: none; border: 0; border-radius: 8px; padding: 8px 14px; background: #8ab4f8; color: #202124; font: 700 13px Manrope, system-ui, sans-serif; cursor: pointer; }
+</style>
+<script>
+  (function () {
+    var n = document.getElementById('cookie-note');
+    try { if (localStorage.getItem('vuzmap.cookieOk') === '1') return; } catch (e) {}
+    n.hidden = false;
+    document.getElementById('cookie-ok').onclick = function () {
+      n.hidden = true;
+      try { localStorage.setItem('vuzmap.cookieOk', '1'); } catch (e) {}
+    };
+  })();
+</script>
 </body>
 </html>
